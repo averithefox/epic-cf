@@ -10,7 +10,11 @@
 	},
 	"devDependencies": {
 		"@types/node": "^26.5.0",
+		"discord-api-types": "^0.38.55",
 		"typescript": "^5.5.2",
 		"wrangler": "^4.129.1"
+	},
+	"dependencies": {
+		"discord-interactions": "^4.4.0"
 	}
 }
