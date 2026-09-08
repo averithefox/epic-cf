@@ -11,10 +11,12 @@
 	"devDependencies": {
 		"@types/node": "^26.5.0",
 		"discord-api-types": "^0.38.55",
+		"prettier-plugin-organize-imports": "^4.3.0",
 		"typescript": "^5.5.2",
 		"wrangler": "^4.129.1"
 	},
 	"dependencies": {
+		"dayjs": "^1.11.23",
 		"discord-interactions": "^4.4.0"
 	}
 }

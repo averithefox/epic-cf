@@ -1,8 +1,16 @@
+import {
+	type APIInteraction,
+	APIInteractionResponse,
+	ApplicationCommandType,
+	InteractionResponseType,
+	InteractionType,
+} from 'discord-api-types/v10';
 import { verifyKey } from 'discord-interactions';
-import { type APIInteraction, APIInteractionResponse, InteractionResponseType, InteractionType, MessageFlags } from 'discord-api-types/v10';
+import { slashCommands } from './commands';
+import { ApplicationCommand } from './types';
 
 export default {
-	async fetch(req, env, ctx) {
+	async fetch(req, env, ctx): Promise<Response> {
 		const res = (status: number) => new Response('', { status });
 		const json = (body: APIInteractionResponse) =>
 			new Response(JSON.stringify(body), {
@@ -23,17 +31,21 @@ export default {
 					type: InteractionResponseType.Pong,
 				});
 			}
+
 			case InteractionType.ApplicationCommand: {
-				return json({
-					type: InteractionResponseType.ChannelMessageWithSource,
-					data: {
-						content: 'rawr x3',
-						flags: MessageFlags.Ephemeral,
-					},
-				});
+				const commands: ApplicationCommand[] | null = {
+					[ApplicationCommandType.ChatInput]: slashCommands,
+					[ApplicationCommandType.User]: null,
+					[ApplicationCommandType.Message]: null,
+					[ApplicationCommandType.PrimaryEntryPoint]: null,
+				}[interaction.data.type];
+				const res = await commands?.find((c) => c.data.name === interaction.data.name)?.execute(interaction, env);
+				if (res) return json(res);
 			}
 		}
 
 		return res(404);
 	},
 } satisfies ExportedHandler<Env>;
+
+export { EpicDb } from './db';
