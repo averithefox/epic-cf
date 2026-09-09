@@ -40,7 +40,7 @@ export default {
 					[ApplicationCommandType.PrimaryEntryPoint]: null,
 				}[interaction.data.type];
 				const res = await commands?.find((c) => c.data.name === interaction.data.name)?.execute(interaction, env);
-				if (res) return json(res);
+				if (res) return res instanceof FormData ? new Response(res) : json(res);
 			}
 		}
 
