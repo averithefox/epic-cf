@@ -6,15 +6,17 @@ import { slashCommands } from '../src/commands';
 const applicationId = process.env.DISCORD_APPLICATION_ID;
 const token = process.env.DISCORD_TOKEN;
 
-const reqInit: RequestInit = {
-	headers: {
+function reqInit(init: RequestInit = {}) {
+	init.headers = {
+		...init.headers,
 		Authorization: `Bot ${token}`,
-	},
-};
+	};
+	return init;
+}
 
 const registeredArray: RESTGetAPIApplicationCommandsResult = await fetch(
 	`https://discord.com/api/v10/applications/${applicationId}/commands`,
-	reqInit,
+	reqInit(),
 ).then((res) => res.json());
 
 const defined = new Map(slashCommands.map((v) => [v.data.name, v.data]));
@@ -49,27 +51,41 @@ const toUpdate = Array.from(defined.keys())
 await Promise.allSettled(
 	[
 		toRegister.map(async (cmd) => {
-			await fetch(`https://discord.com/api/v10/applications/${applicationId}/commands`, {
-				...reqInit,
-				method: 'POST',
-				body: JSON.stringify(cmd),
-			});
+			await fetch(
+				`https://discord.com/api/v10/applications/${applicationId}/commands`,
+				reqInit({
+					method: 'POST',
+					body: JSON.stringify(cmd),
+					headers: {
+						'Content-Type': 'application/json',
+					},
+				}),
+			);
 		}),
 		toRemove.map(async (cmd) => {
-			await fetch(`https://discord.com/api/v10/applications/${applicationId}/commands/${cmd.id}`, {
-				...reqInit,
-				method: 'DELETE',
-			});
+			await fetch(
+				`https://discord.com/api/v10/applications/${applicationId}/commands/${cmd.id}`,
+				reqInit({
+					method: 'DELETE',
+				}),
+			);
 		}),
 		toUpdate.map(async ([id, cmd]) => {
-			await fetch(`https://discord.com/api/v10/applications/${applicationId}/commands/${id}`, {
-				...reqInit,
-				method: 'PATCH',
-				body: JSON.stringify(cmd),
-			});
+			await fetch(
+				`https://discord.com/api/v10/applications/${applicationId}/commands/${id}`,
+				reqInit({
+					method: 'PATCH',
+					body: JSON.stringify(cmd),
+					headers: {
+						'Content-Type': 'application/json',
+					},
+				}),
+			);
 		}),
 	].flat(),
 );
+
+console.log({ toRegister, toRemove, toUpdate });
 
 function equals(a: unknown, b: unknown): boolean {
 	if (typeof a !== typeof b) return false;

@@ -1,7 +1,13 @@
 import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
-import { ComponentType, InteractionResponseType, MessageFlags } from 'discord-api-types/v10';
+import {
+	ApplicationIntegrationType,
+	ComponentType,
+	InteractionContextType,
+	InteractionResponseType,
+	MessageFlags,
+} from 'discord-api-types/v10';
 import { SlashCommand } from '../types';
 import { formatDuration, formatOrdinal, random, run } from '../utils';
 
@@ -45,6 +51,8 @@ export default {
 		description_localizations: {
 			pl: 'mom, can we have /adwent? no. we have /adwent at home. /adwent at home:',
 		},
+		integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
+		contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
 	},
 
 	execute: (interaction, env) =>
