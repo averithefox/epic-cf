@@ -1,3 +1,4 @@
+import { regex } from 'arkregex';
 import dayjs from 'dayjs';
 import {
 	APIActionRowComponent,
@@ -208,32 +209,23 @@ async function getStreaks(stub: DurableObjectStub<EpicDb>) {
 }
 
 function getState(msg: APIMessage) {
-	const match = msg.embeds[0].footer?.text.match(/Page (?<current>\d+) \/ (?<max>\d+)/);
-
-	if (!match) {
-		return null;
-	}
-
 	const topLevelComponent = msg.components?.[0];
-
-	if (topLevelComponent?.type !== 1) {
+	if (topLevelComponent?.type !== ComponentType.ActionRow) {
 		return null;
 	}
 
 	const menu = topLevelComponent.components[0];
-
 	if (menu?.type !== ComponentType.StringSelect) {
 		return null;
 	}
 
-	const currentPage = Number.parseInt(match.groups?.current ?? '1') - 1;
-	const maxPage = Number.parseInt(match.groups?.max ?? '1') - 1;
+	const match = regex('Page (?<current>\\d+)').exec(msg.embeds[0].footer?.text ?? '');
+	const currentPage = parseInt(match?.groups.current ?? '1') - 1;
 
 	const selected = (menu.options.find((option) => option.default) ?? menu.options[0]).value;
 
 	return {
 		currentPage,
-		maxPage,
 		selected,
 	};
 }
@@ -279,11 +271,24 @@ async function getLeaderboardReplyContent(env: Env, id: LeaderboardObject['id'],
 		};
 
 	const stub = env.EpicDb.getByName('main');
-	const perPage = 9;
 	const entries = await lb.getEntries(stub);
 
+	const perPage = 9;
 	const groups = Array.from({ length: Math.ceil(entries.length / perPage) }, (_, i) => entries.slice(i * perPage, (i + 1) * perPage));
-	const maxPage = groups.length - 1;
+
+	const maxPage = Math.max(groups.length - 1, 0);
+	page = clamp(page, 0, maxPage);
+
+	const averi = await getUserById('719890634294427669', env, 7 * 60 * 60 * 24);
+	const embed: APIEmbed = {
+		color: 0xcf646c,
+		title: `${lb.name} leaderboard`,
+		footer: {
+			text: `by @${averi?.username ?? 'averithefox'}`,
+		},
+	};
+	if (averi) embed.footer!.icon_url = avatarURL(averi);
+	if (groups.length) embed.footer!.text += ` | Page ${page + 1} / ${groups.length}`;
 
 	const buttonRow: APIActionRowComponent<APIButtonComponent> = {
 		type: ComponentType.ActionRow,
@@ -322,16 +327,6 @@ async function getLeaderboardReplyContent(env: Env, id: LeaderboardObject['id'],
 			},
 		],
 	};
-
-	const averi = await getUserById('719890634294427669', env, 7 * 60 * 60 * 24);
-	const embed: APIEmbed = {
-		color: 0xcf646c,
-		title: `${lb.name} leaderboard`,
-		footer: {
-			text: `by @${averi?.username ?? 'averithefox'} | Page ${page + 1} / ${groups.length}`,
-		},
-	};
-	if (averi) embed.footer!.icon_url = avatarURL(averi);
 
 	const group = groups[page];
 	if (!group) {
@@ -397,7 +392,7 @@ export default {
 			const state = getState(interaction.message);
 			const step = { 'leaderboard-prev': -1, 'leaderboard-next': +1, 'leaderboard-refresh': 0 }[component.custom_id];
 			if (!state || step === undefined) return;
-			const data = await getLeaderboardReplyContent(env, state.selected, clamp(state.currentPage + step, 0, state.maxPage));
+			const data = await getLeaderboardReplyContent(env, state.selected, state.currentPage + step);
 			return { type: InteractionResponseType.UpdateMessage, data };
 		}
 	},
