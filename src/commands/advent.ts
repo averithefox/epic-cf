@@ -103,11 +103,11 @@ export default {
 				interaction.locale === 'pl'
 					? `## Odebrano ${day.toLocaleString('pl-PL')} dzień adwentu!`
 					: `## You claimed the ${formatOrdinal(day)} day of advent!`;
+			const emoji = random(['OwO', 'UwU', '>.<', '-.-', 'nyaa~~', 'meow', '^^', ':3']);
 			const status =
 				interaction.locale === 'pl'
-					? `Odebranie adwentu zajęło Tobie ${formatDuration(claimedIn)}!`
-					: `It took you ${formatDuration(claimedIn)}!`;
-			const emoji = random(['OwO', 'UwU', '>.<', '-.-', 'nyaa~~', 'meow', '^^', ':3']);
+					? `Odebranie adwentu zajęło Tobie ${formatDuration(claimedIn)}! ${emoji}`
+					: `It took you ${formatDuration(claimedIn)}! ${emoji}`;
 			const userAvatar = avatarURL(user, interaction.member, interaction.guild_id);
 
 			resolve({
@@ -120,7 +120,7 @@ export default {
 							components: [
 								{
 									type: ComponentType.Section,
-									components: [title, status, emoji].map((content) => ({
+									components: [title, status].map((content) => ({
 										type: ComponentType.TextDisplay,
 										content,
 									})),
