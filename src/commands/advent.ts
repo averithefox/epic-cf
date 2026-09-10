@@ -9,7 +9,7 @@ import {
 	MessageFlags,
 } from 'discord-api-types/v10';
 import { SlashCommand } from '../types';
-import { formatDuration, formatOrdinal, random, run } from '../utils';
+import { avatarURL, formatDuration, formatOrdinal, random } from '../utils';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -108,18 +108,7 @@ export default {
 					? `Odebranie adwentu zajęło Tobie ${formatDuration(claimedIn)}!`
 					: `It took you ${formatDuration(claimedIn)}!`;
 			const emoji = random(['OwO', 'UwU', '>.<', '-.-', 'nyaa~~', 'meow', '^^', ':3']);
-
-			const userAvatar =
-				'https://cdn.discordapp.com/' +
-				run(() => {
-					const member = interaction.member;
-					const hash = member?.avatar ?? user.avatar;
-					// https://www.reddit.com/r/discordapp/comments/14h7rtv/comment/jp9j7p3
-					if (!hash) return `embed/avatars/${(BigInt(user.id) >> 22n) % 6n}.png`;
-					const ext = hash.startsWith('a_') ? 'webp?animated=true' : 'png';
-					if (member?.avatar && interaction.guild_id) return `guilds/${interaction.guild_id}/users/${user.id}/avatars/${hash}.${ext}`;
-					return `avatars/${user.id}/${hash}.${ext}`;
-				});
+			const userAvatar = avatarURL(user, interaction.member, interaction.guild_id);
 
 			resolve({
 				type: InteractionResponseType.ChannelMessageWithSource,

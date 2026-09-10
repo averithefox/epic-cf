@@ -1,13 +1,13 @@
 import {
+	APIChatInputApplicationCommandInteraction,
 	type APIInteraction,
-	APIInteractionResponse,
+	type APIInteractionResponse,
 	ApplicationCommandType,
 	InteractionResponseType,
 	InteractionType,
 } from 'discord-api-types/v10';
 import { verifyKey } from 'discord-interactions';
 import { slashCommands } from './commands';
-import { ApplicationCommand } from './types';
 
 export default {
 	async fetch(req, env, ctx): Promise<Response> {
@@ -33,14 +33,20 @@ export default {
 			}
 
 			case InteractionType.ApplicationCommand: {
-				const commands: ApplicationCommand[] | null = {
-					[ApplicationCommandType.ChatInput]: slashCommands,
-					[ApplicationCommandType.User]: null,
-					[ApplicationCommandType.Message]: null,
-					[ApplicationCommandType.PrimaryEntryPoint]: null,
-				}[interaction.data.type];
-				const res = await commands?.find((c) => c.data.name === interaction.data.name)?.execute(interaction, env);
+				if (interaction.data.type !== ApplicationCommandType.ChatInput) break;
+				const res = await slashCommands
+					.find((c) => c.data.name === interaction.data.name)
+					?.execute(interaction as APIChatInputApplicationCommandInteraction, env);
 				if (res) return res instanceof FormData ? new Response(res) : json(res);
+				break;
+			}
+
+			case InteractionType.MessageComponent: {
+				for (const cmd of slashCommands) {
+					const res = await cmd.handleComponent?.(interaction, env);
+					if (res) return res instanceof FormData ? new Response(res) : json(res);
+				}
+				break;
 			}
 		}
 

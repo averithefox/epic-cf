@@ -1,5 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 
+export type Statistic = 'advent_on_cooldown' | 'mzpl_uses';
+
 export class EpicDb extends DurableObject<Env> {
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
@@ -43,7 +45,7 @@ create table if not exists bread_game (
 	}
 
 	async tryClaimAdvent(userId: string, day: number, year: number, at: number): Promise<boolean> {
-		let result = this.ctx.storage.sql.exec(
+		const result = this.ctx.storage.sql.exec(
 			'insert or ignore into advent(user_id, day, year, claimed_at) values(?, ?, ?, ?);',
 			userId,
 			day,
@@ -53,22 +55,30 @@ create table if not exists bread_game (
 		return result.rowsWritten > 0;
 	}
 
-	/**
-	 * @param stat DO NOT SET TO USER-SUPPLIED DATA
-	 */
-	async updateStatistic(userId: string, stat: string, diff: number) {
+	async updateStatistic(userId: string, stat: Statistic, diff: number) {
 		if (!/^[a-z_]+$/.test(stat)) throw new Error(`"${stat}" isn't a valid statistic. possible SQL injection attempt?`);
 
 		this.ctx.storage.sql.exec(
-			`
-			insert into stats (user_id, ${stat})
+			`insert into stats (user_id, ${stat})
       values (?, ?)
       on conflict (user_id) do update set
-        ${stat} = ${stat} + ?;
-    `,
+        ${stat} = ${stat} + ?;`,
 			userId,
 			diff,
 			diff,
 		);
+	}
+
+	async getAdventEntriesForYear(year: number) {
+		const result = this.ctx.storage.sql.exec<{ user_id: string; day: number; claimed_at: number }>(
+			'select user_id, day, claimed_at from advent where year = ? and claimed_at is not null;',
+			year,
+		);
+		return result.toArray();
+	}
+
+	async getStatistics() {
+		const result = this.ctx.storage.sql.exec<Record<Statistic, number> & { user_id: string }>('select * from stats;');
+		return result.toArray();
 	}
 }

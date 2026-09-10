@@ -21,6 +21,12 @@
 			"storage": "sqlite",
 		},
 	},
+	"kv_namespaces": [
+		{
+			"binding": "EpicKV",
+			"id": "f7aa684cd1bf4d81902b74e4ddefe8f1",
+		},
+	],
 	"observability": {
 		"enabled": true,
 	},
@@ -32,7 +38,9 @@
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
 	 */
-	"placement": { "mode": "smart" },
+	"placement": {
+		"mode": "smart",
+	},
 	/**
 	 * Bindings
 	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including

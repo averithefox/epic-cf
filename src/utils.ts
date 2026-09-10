@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
+import { APIGuildMember, APIUser } from 'discord-api-types/v10';
 import { Nullish } from './types';
 
 dayjs.extend(duration);
@@ -59,3 +60,17 @@ export function formatOrdinal(num: number) {
 }
 
 export const run = <T>(fn: () => T) => fn();
+
+export function clamp(value: number, min: number, max: number) {
+	return value < min ? min : value > max ? max : value;
+}
+
+export function avatarURL(user: APIUser, member?: APIGuildMember | null, guildId?: string | null) {
+	const BASE = 'https://cdn.discordapp.com';
+	const hash = member?.avatar ?? user.avatar;
+	// https://www.reddit.com/r/discordapp/comments/14h7rtv/comment/jp9j7p3
+	if (!hash) return `${BASE}/embed/avatars/${(BigInt(user.id) >> 22n) % 6n}.png`;
+	const ext = hash.startsWith('a_') ? 'webp?animated=true' : 'png';
+	if (member?.avatar && guildId) return `${BASE}/guilds/${guildId}/users/${user.id}/avatars/${hash}.${ext}`;
+	return `${BASE}/avatars/${user.id}/${hash}.${ext}`;
+}
