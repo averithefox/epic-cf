@@ -14,28 +14,23 @@ import { avatarURL, formatDuration, formatOrdinal, random } from '../utils';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+export const ADVENT_TIMEZONE = 'Europe/Warsaw';
+
 /**
  * Gets the "advent year" - the year when the current advent season started.
  * Advent runs from Dec 1 of year N until Nov 30 of year N+1.
  * e.g., Dec 2025 → 2025, Jan 2026 → 2025, Dec 2026 → 2026
  */
-export function getAdventYear(today: dayjs.Dayjs = dayjs()) {
-	const currentYear = today.year();
-	const adventStart = dayjs(`${currentYear}-12-01`).startOf('day');
-
-	if (today.isBefore(adventStart)) {
-		return currentYear - 1;
-	}
-
-	return currentYear;
+export function getAdventYear(date: dayjs.Dayjs) {
+	const year = date.year();
+	const start = dayjs.tz(`${year}-12-01`, ADVENT_TIMEZONE).startOf('day');
+	return date.isBefore(start) ? year - 1 : year;
 }
 
-export function getDaysSinceAdvent(today: dayjs.Dayjs = dayjs()) {
-	const adventYear = getAdventYear(today);
-	const adventStart = dayjs(`${adventYear}-12-01`).startOf('day');
-	const daysDiff = today.diff(adventStart, 'day');
-
-	return daysDiff;
+export function getAdventDay(date: dayjs.Dayjs) {
+	const year = getAdventYear(date);
+	const start = dayjs.tz(`${year}-12-01`, ADVENT_TIMEZONE).startOf('day');
+	return date.diff(start, 'day');
 }
 
 const getTimeUntilMidnight = (date: dayjs.Dayjs) => date.endOf('day').diff(date, 'ms');
@@ -57,12 +52,12 @@ export default {
 
 	execute: (interaction, env) =>
 		new Promise(async (resolve) => {
-			const now = dayjs();
+			const now = dayjs().tz(ADVENT_TIMEZONE);
 
 			const user = interaction.user;
 			if (!user) throw new Error('interaction.user == null');
 
-			const day = getDaysSinceAdvent(now);
+			const day = getAdventDay(now);
 			const year = getAdventYear(now);
 
 			console.time(`/advent for ${user.id}`);

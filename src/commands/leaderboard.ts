@@ -1,5 +1,7 @@
 import { regex } from 'arkregex';
 import dayjs from 'dayjs';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
 import {
 	APIActionRowComponent,
 	APIButtonComponent,
@@ -19,7 +21,10 @@ import {
 import { EpicDb } from '../db';
 import { SlashCommand } from '../types';
 import { avatarURL, clamp, formatDuration } from '../utils';
-import { getAdventYear, getDaysSinceAdvent } from './advent';
+import { ADVENT_TIMEZONE, getAdventDay, getAdventYear } from './advent';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface Entry {
 	id: string;
@@ -103,9 +108,10 @@ const LEADERBOARDS = [
 		id: 'advent-days-claimed',
 		name: '/advent days claimed',
 		async getEntries(stub) {
+			const now = dayjs().tz(ADVENT_TIMEZONE);
 			const entries = new Map<string, number[]>();
-			const year = getAdventYear();
 
+			const year = getAdventYear(now);
 			for (const row of await stub.getAdventEntriesForYear(year)) {
 				const arr = entries.get(row.user_id) ?? [];
 				arr.push(row.day);
@@ -114,7 +120,7 @@ const LEADERBOARDS = [
 
 			const firstDay = Array.from(entries.values()).reduce((acc, val) => Math.min(acc, ...val), Number.POSITIVE_INFINITY);
 
-			const current = getDaysSinceAdvent();
+			const current = getAdventDay(now);
 
 			return Array.from(entries.entries())
 				.map(([id, days]) => ({
@@ -149,11 +155,12 @@ const LEADERBOARDS = [
 ] satisfies LeaderboardObject[];
 
 async function getClaimTimes(stub: DurableObjectStub<EpicDb>) {
+	const now = dayjs().tz(ADVENT_TIMEZONE);
 	const entries = new Map<string, number[]>();
-	const year = getAdventYear();
 
+	const year = getAdventYear(now);
 	for (const row of await stub.getAdventEntriesForYear(year)) {
-		const claimedAt = dayjs(row.claimed_at);
+		const claimedAt = dayjs.tz(row.claimed_at, ADVENT_TIMEZONE);
 		const claimedIn = claimedAt.diff(claimedAt.startOf('day'));
 
 		const arr = entries.get(row.user_id) ?? [];
@@ -165,16 +172,17 @@ async function getClaimTimes(stub: DurableObjectStub<EpicDb>) {
 }
 
 async function getStreaks(stub: DurableObjectStub<EpicDb>) {
+	const now = dayjs().tz(ADVENT_TIMEZONE);
 	const entries = new Map<string, number[]>();
-	const year = getAdventYear();
 
+	const year = getAdventYear(now);
 	for (const row of await stub.getAdventEntriesForYear(year)) {
 		const arr = entries.get(row.user_id) ?? [];
 		arr.push(row.day);
 		entries.set(row.user_id, arr);
 	}
 
-	const currentDay = getDaysSinceAdvent();
+	const currentDay = getAdventDay(now);
 
 	return Array.from(entries.entries()).map(([id, days]) => {
 		const streakInfo = days
