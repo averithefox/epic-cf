@@ -1,6 +1,34 @@
 import { DurableObject } from 'cloudflare:workers';
 
-export type Statistic = 'advent_on_cooldown' | 'mzpl_uses';
+export type Advent = {
+	user_id: string;
+	day: number;
+	year: number;
+	claimed_at: number;
+};
+
+export type Stats = {
+	user_id: string;
+	advent_on_cooldown: number;
+	mzpl_uses: number;
+};
+export type Statistic = Exclude<keyof Stats, 'user_id'>;
+
+export type BreadGame = {
+	user_id: string;
+	burgers: number;
+	bread: number;
+	slices: number;
+	mold: number;
+	cows_capable: number;
+	cows_milked: number;
+	milk: number;
+	whipped_milk: number;
+	raw_steak: number;
+	cheese: number;
+	cooked_steak: number;
+	knife: number;
+};
 
 export class EpicDb extends DurableObject<Env> {
 	constructor(ctx: DurableObjectState, env: Env) {
@@ -19,11 +47,6 @@ create table if not exists stats (
   user_id text primary key,
   advent_on_cooldown integer not null default 0,
   mzpl_uses integer not null default 0
-);
-
-create table if not exists subscriptions (
-  user_id text primary key,
-  advent_reminder integer not null default 0
 );
 
 create table if not exists bread_game (
@@ -70,7 +93,7 @@ create table if not exists bread_game (
 	}
 
 	async getAdventEntriesForYear(year: number) {
-		const result = this.ctx.storage.sql.exec<{ user_id: string; day: number; claimed_at: number }>(
+		const result = this.ctx.storage.sql.exec<Omit<Advent, 'year'>>(
 			'select user_id, day, claimed_at from advent where year = ? and claimed_at is not null;',
 			year,
 		);
@@ -78,7 +101,7 @@ create table if not exists bread_game (
 	}
 
 	async getStatistics() {
-		const result = this.ctx.storage.sql.exec<Record<Statistic, number> & { user_id: string }>('select * from stats;');
+		const result = this.ctx.storage.sql.exec<Stats>('select * from stats;');
 		return result.toArray();
 	}
 }
