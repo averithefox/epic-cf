@@ -1,6 +1,7 @@
-import { ApplicationIntegrationType, InteractionContextType, InteractionResponseType } from 'discord-api-types/v10';
-import { SlashCommand } from '../types';
+import { ApplicationIntegrationType, InteractionContextType } from 'discord-api-types/v10';
+import { SlashCommand } from '.';
 import { random } from '../utils';
+import { message } from './utils';
 
 const MEOW = [
 	'meow', // english
@@ -33,21 +34,18 @@ export default {
 		name: 'mzpl',
 		description: 'meow',
 		description_localizations: { pl: 'miau' },
+
+		scope: 'global',
 		integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
 		contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
 	},
 
 	execute: (interaction, env) =>
 		new Promise(async (resolve) => {
-			const user = interaction.user;
-			if (!user) throw new Error('interaction.user == null');
+			resolve(message(random(MEOW)));
 
-			resolve({
-				type: InteractionResponseType.ChannelMessageWithSource,
-				data: {
-					content: random(MEOW),
-				},
-			});
+			const user = interaction.user ?? interaction.member?.user;
+			if (!user) return console.error('user object missing');
 
 			const stub = env.EpicDb.getByName('main');
 			await stub.updateStatistic(user.id, 'mzpl_uses', +1);

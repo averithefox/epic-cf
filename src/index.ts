@@ -1,20 +1,22 @@
 import {
 	APIChatInputApplicationCommandInteraction,
 	type APIInteraction,
-	type APIInteractionResponse,
 	ApplicationCommandType,
 	InteractionResponseType,
 	InteractionType,
+	MessageFlags,
 } from 'discord-api-types/v10';
 import { verifyKey } from 'discord-interactions';
-import { slashCommands } from './commands';
+import { SlashCommandResponse, slashCommands } from './commands';
+import { message } from './commands/utils';
 
-async function handleInteraction(interaction: APIInteraction, env: Env): Promise<APIInteractionResponse | FormData | undefined> {
-	const user = interaction.user;
+async function handleInteraction(interaction: APIInteraction, env: Env): Promise<SlashCommandResponse | undefined> {
+	const user = interaction.user ?? interaction.member?.user;
 	if (user) {
 		await env.EpicKV.put(`APIUser@${user.id}`, JSON.stringify(user), { expirationTtl: 60 * 60 * 24 });
 	}
 
+	let res: SlashCommandResponse | undefined = undefined;
 	switch (interaction.type) {
 		case InteractionType.Ping: {
 			return {
@@ -24,19 +26,32 @@ async function handleInteraction(interaction: APIInteraction, env: Env): Promise
 
 		case InteractionType.ApplicationCommand: {
 			if (interaction.data.type !== ApplicationCommandType.ChatInput) break;
-			return await slashCommands
-				.find((c) => c.data.name === interaction.data.name)
-				?.execute(interaction as APIChatInputApplicationCommandInteraction, env);
+			try {
+				res = await slashCommands
+					.find((c) => c.data.name === interaction.data.name)
+					?.execute(interaction as APIChatInputApplicationCommandInteraction, env);
+			} catch (e) {
+				return message({ content: 'exception caught during execution', flags: MessageFlags.Ephemeral });
+			}
+			return res;
 		}
 
 		case InteractionType.MessageComponent: {
-			for (const cmd of slashCommands) {
-				const res = await cmd.handleComponent?.(interaction, env);
-				if (res) return res;
+			const id = interaction.data.custom_id.split(/[^A-Za-z]/, 1)[0];
+			try {
+				res = await slashCommands.find((c) => c.data.name === id)?.handleComponent?.(interaction, env);
+			} catch (e) {
+				return message({ content: 'exception caught during execution', flags: MessageFlags.Ephemeral });
 			}
-			break;
+			return res;
+		}
+
+		case InteractionType.ModalSubmit: {
+			const id = interaction.data.custom_id.split(/[^A-Za-z]/, 1)[0];
+			return await slashCommands.find((c) => c.data.name === id)?.handleModal?.(interaction, env);
 		}
 	}
+	return res;
 }
 
 async function verifyRequest(req: Request, env: Env): Promise<APIInteraction | null> {
@@ -52,7 +67,7 @@ async function verifyRequest(req: Request, env: Env): Promise<APIInteraction | n
 }
 
 export default {
-	async fetch(req, env, ctx): Promise<Response> {
+	async fetch(req, env): Promise<Response> {
 		const interaction = await verifyRequest(req, env);
 		if (!interaction) return new Response('', { status: 400 });
 

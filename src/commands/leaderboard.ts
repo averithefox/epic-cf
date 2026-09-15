@@ -18,10 +18,11 @@ import {
 	InteractionResponseType,
 	RESTGetAPIUserResult,
 } from 'discord-api-types/v10';
+import { SlashCommand } from '.';
 import { EpicDb } from '../db';
-import { SlashCommand } from '../types';
 import { avatarURL, clamp, formatDuration } from '../utils';
 import { ADVENT_TIMEZONE, getAdventDay, getAdventYear } from './advent';
+import { message } from './utils';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -362,8 +363,6 @@ export default {
 	data: {
 		name: 'leaderboard',
 		description: 'View a leaderboard',
-		integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
-		contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
 		options: [
 			{
 				type: ApplicationCommandOptionType.String,
@@ -372,18 +371,18 @@ export default {
 				choices: LEADERBOARDS.map(({ id, name }) => ({ name, value: id })),
 			},
 		],
+
+		scope: 'global',
+		integration_types: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
+		contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
 	},
 
-	execute: (interaction, env) =>
-		new Promise(async (resolve) => {
-			const option = interaction.data.options?.[0];
-			const leaderboard = (option?.type === ApplicationCommandOptionType.String && option.value) || LEADERBOARDS[0].id;
-			const reply = await getLeaderboardReplyContent(env, leaderboard);
-			resolve({
-				type: InteractionResponseType.ChannelMessageWithSource,
-				data: reply,
-			});
-		}),
+	async execute(interaction, env) {
+		const option = interaction.data.options?.[0];
+		const leaderboard = (option?.type === ApplicationCommandOptionType.String && option.value) || LEADERBOARDS[0].id;
+		const reply = await getLeaderboardReplyContent(env, leaderboard);
+		return message(reply);
+	},
 
 	async handleComponent(interaction, env) {
 		const component = interaction.data;

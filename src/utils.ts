@@ -1,9 +1,11 @@
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import { APIGuildMember, APIUser } from 'discord-api-types/v10';
-import { Nullish } from './types';
 
 dayjs.extend(duration);
+
+export type Nullish<T> = T | null | undefined;
+export type MaybePromise<T> = T | Promise<T>;
 
 export function formatDuration(ms: Nullish<number>) {
 	if (ms == null) {
@@ -73,4 +75,16 @@ export function avatarURL(user: APIUser, member?: APIGuildMember | null, guildId
 	const ext = hash.startsWith('a_') ? 'webp?animated=true' : 'png';
 	if (member?.avatar && guildId) return `${BASE}/guilds/${guildId}/users/${user.id}/avatars/${hash}.${ext}`;
 	return `${BASE}/avatars/${user.id}/${hash}.${ext}`;
+}
+
+type Split<S extends string, D extends string> = string extends S
+	? string[]
+	: S extends `${infer P}${D}${infer R}`
+		? [P, ...Split<R, D>]
+		: [S];
+
+export const split = <S extends string, D extends string>(str: S, delim: D) => str.split(delim) as Split<S, D>;
+
+export function panic(msg?: string): never {
+	throw new Error(msg);
 }

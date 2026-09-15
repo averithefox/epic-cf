@@ -1,111 +1,66 @@
 #!/usr/bin/env bun
 
-import { RESTGetAPIApplicationCommandsResult, RESTPatchAPIApplicationCommandJSONBody } from 'discord-api-types/v10';
-import { slashCommands } from '../src/commands';
+import { RESTPutAPIApplicationCommandsJSONBody, RESTPutAPIApplicationGuildCommandsJSONBody } from 'discord-api-types/v10';
+import { GuildSlashCommand, slashCommands } from '../src/commands';
+import { split } from '../src/utils';
 
 const applicationId = process.env.DISCORD_APPLICATION_ID;
 const token = process.env.DISCORD_TOKEN;
 
-function reqInit(init: RequestInit = {}) {
-	init.headers = {
-		...init.headers,
-		Authorization: `Bot ${token}`,
-	};
-	return init;
-}
-
-const registeredArray: RESTGetAPIApplicationCommandsResult = await fetch(
-	`https://discord.com/api/v10/applications/${applicationId}/commands`,
-	reqInit(),
-).then((res) => res.json());
-
-const defined = new Map(slashCommands.map((v) => [v.data.name, v.data]));
-const registered = new Map(registeredArray.map((v) => [v.name, v]));
-
-const toRegister = slashCommands.map((v) => v.data).filter((v) => !registered.has(v.name));
-const toRemove = registeredArray.filter((v) => !defined.has(v.name));
-const toUpdate = Array.from(defined.keys())
-	.filter((name) => registered.has(name))
-	.map((name): [string, RESTPatchAPIApplicationCommandJSONBody] | null => {
-		const our = defined.get(name)!;
-		const theirs = registered.get(name)!;
-
-		const KEYS: (keyof RESTPatchAPIApplicationCommandJSONBody)[] = [
-			'name_localizations',
-			'description' as any, // missing type
-			'description_localizations',
-			'options',
-			'default_member_permissions',
-			'dm_permission',
-			'default_permission',
-			'integration_types',
-			'contexts',
-			'nsfw',
-			'handler',
-		];
-		const keys = KEYS.filter((key) => !equals(our[key], theirs[key]));
-		return keys.length ? [theirs.id, Object.fromEntries(keys.map((key) => [key, our[key]]))] : null;
-	})
-	.filter((v) => v !== null);
-
-await Promise.allSettled(
-	[
-		toRegister.map(async (cmd) => {
-			await fetch(
-				`https://discord.com/api/v10/applications/${applicationId}/commands`,
-				reqInit({
-					method: 'POST',
-					body: JSON.stringify(cmd),
-					headers: {
-						'Content-Type': 'application/json',
-					},
-				}),
-			);
-		}),
-		toRemove.map(async (cmd) => {
-			await fetch(
-				`https://discord.com/api/v10/applications/${applicationId}/commands/${cmd.id}`,
-				reqInit({
-					method: 'DELETE',
-				}),
-			);
-		}),
-		toUpdate.map(async ([id, cmd]) => {
-			await fetch(
-				`https://discord.com/api/v10/applications/${applicationId}/commands/${id}`,
-				reqInit({
-					method: 'PATCH',
-					body: JSON.stringify(cmd),
-					headers: {
-						'Content-Type': 'application/json',
-					},
-				}),
-			);
-		}),
-	].flat(),
-);
-
-console.log({ toRegister, toRemove, toUpdate });
-
-function equals(a: unknown, b: unknown): boolean {
-	if (typeof a !== typeof b) return false;
-
-	// primitives (boolean, bigint, symbol, undefined)
-	if (a === null || typeof a !== 'object') {
-		return a === b;
+const MAX_ATTEMPTS = 2;
+let rateLimitRemaining = Number.POSITIVE_INFINITY;
+let rateLimitReset = -1;
+async function req<Ret = unknown, Body = unknown>(path: string, body?: Body, method?: string, attempt = 0): Promise<Ret> {
+	if (attempt >= MAX_ATTEMPTS) {
+		throw new Error(`max attempts (${MAX_ATTEMPTS}) exceeded for ${path}`);
 	}
 
-	if (Array.isArray(a)) {
-		if (!Array.isArray(b) || a.length !== b.length) return false;
-		return a.every((v, i) => equals(v, b[i]));
+	const hasBody = body !== undefined;
+	method = method ?? (hasBody ? 'POST' : 'GET');
+
+	while (rateLimitRemaining <= 0 && Date.now() < rateLimitReset) {
+		await new Promise((resolve) => setTimeout(resolve, rateLimitReset - Date.now()));
 	}
-	if (Array.isArray(b)) return false;
 
-	const keysA = Object.keys(a);
-	const keysB = Object.keys(b as object);
-	if (keysA.length !== keysB.length) return false;
+	const res = await fetch(`https://discord.com/api/v10${path}`, {
+		headers: {
+			'User-Agent': 'DiscordBot (epic-cf, 0.0.0)',
+			Authorization: `Bot ${token}`,
+			...(hasBody && { 'Content-Type': 'application/json; charset=utf-8' }),
+		},
+		method,
+		body: hasBody ? JSON.stringify(body) : undefined,
+	});
 
-	return keysA.every((k) => equals((a as any)[k], (b as any)[k]));
+	rateLimitRemaining = +res.headers.get('X-RateLimit-Remaining')!;
+	rateLimitReset = +res.headers.get('X-RateLimit-Reset')! * 1000;
+
+	if (res.status === 429) {
+		return await req<Ret, Body>(path, body, method, attempt + 1);
+	}
+
+	const json: any = await res.json();
+	if (!res.ok) {
+		throw new Error(`${res.status} (${res.statusText}) for ${path}: ${json.message}`);
+	}
+
+	return json;
 }
 
-export {};
+const commandData = slashCommands.map((it) => it.data);
+const global = commandData.filter(({ scope }) => split(scope, ':')[0] === 'global');
+const guild = commandData.reduce((acc, it) => {
+	const [scope, guildId] = split(it.scope, ':');
+	if (scope !== 'guild') return acc;
+	const arr = acc.get(guildId) ?? [];
+	arr.push(it as GuildSlashCommand);
+	acc.set(guildId, arr);
+	return acc;
+}, new Map<`${number}`, GuildSlashCommand[]>());
+
+await req<void, RESTPutAPIApplicationCommandsJSONBody>(`/applications/${applicationId}/commands`, global, 'PUT');
+
+for (const guildId of guild.keys()) {
+	const cmds = guild.get(guildId)!;
+	await req<void, RESTPutAPIApplicationGuildCommandsJSONBody>(`/applications/${applicationId}/guilds/${guildId}/commands`, cmds, 'PUT');
+}
