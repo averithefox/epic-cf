@@ -10,7 +10,7 @@ import { verifyKey } from 'discord-interactions';
 import { SlashCommandResponse, slashCommands } from './commands';
 import { message } from './commands/utils';
 
-async function handleInteraction(interaction: APIInteraction, env: Env): Promise<SlashCommandResponse | undefined> {
+async function handleInteraction(interaction: APIInteraction, env: Env, ctx: ExecutionContext): Promise<SlashCommandResponse | undefined> {
 	const user = interaction.user ?? interaction.member?.user;
 	if (user) {
 		await env.EpicKV.put(`APIUser@${user.id}`, JSON.stringify(user), { expirationTtl: 60 * 60 * 24 });
@@ -29,7 +29,7 @@ async function handleInteraction(interaction: APIInteraction, env: Env): Promise
 			try {
 				res = await slashCommands
 					.find((c) => c.data.name === interaction.data.name)
-					?.execute(interaction as APIChatInputApplicationCommandInteraction, env);
+					?.execute(interaction as APIChatInputApplicationCommandInteraction, env, ctx);
 			} catch (e) {
 				if (e instanceof Error) console.error(`(${e.name}) ${e.message} at ${e.stack}`);
 				else console.error(e);
@@ -41,7 +41,7 @@ async function handleInteraction(interaction: APIInteraction, env: Env): Promise
 		case InteractionType.MessageComponent: {
 			const id = interaction.data.custom_id.split(/[^A-Za-z]/, 1)[0];
 			try {
-				res = await slashCommands.find((c) => c.data.name === id)?.handleComponent?.(interaction, env);
+				res = await slashCommands.find((c) => c.data.name === id)?.handleComponent?.(interaction, env, ctx);
 			} catch (e) {
 				if (e instanceof Error) console.error(`(${e.name}) ${e.message} at ${e.stack}`);
 				else console.error(e);
@@ -52,7 +52,7 @@ async function handleInteraction(interaction: APIInteraction, env: Env): Promise
 
 		case InteractionType.ModalSubmit: {
 			const id = interaction.data.custom_id.split(/[^A-Za-z]/, 1)[0];
-			return await slashCommands.find((c) => c.data.name === id)?.handleModal?.(interaction, env);
+			return await slashCommands.find((c) => c.data.name === id)?.handleModal?.(interaction, env, ctx);
 		}
 	}
 	return res;
@@ -71,11 +71,11 @@ async function verifyRequest(req: Request, env: Env): Promise<APIInteraction | n
 }
 
 export default {
-	async fetch(req, env): Promise<Response> {
+	async fetch(req, env, ctx): Promise<Response> {
 		const interaction = await verifyRequest(req, env);
 		if (!interaction) return new Response('', { status: 400 });
 
-		const res = await handleInteraction(interaction, env);
+		const res = await handleInteraction(interaction, env, ctx);
 		if (!res) return new Response('', { status: 404 });
 
 		return res instanceof FormData

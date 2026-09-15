@@ -40,14 +40,11 @@ export default {
 		contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
 	},
 
-	execute: (interaction, env) =>
-		new Promise(async (resolve) => {
-			resolve(message(random(MEOW)));
+	async execute(interaction, env, ctx) {
+		const user = interaction.user ?? interaction.member?.user;
+		const stub = env.EpicDb.getByName('main');
+		if (user) ctx.waitUntil(stub.updateStatistic(user.id, 'mzpl_uses', +1));
 
-			const user = interaction.user ?? interaction.member?.user;
-			if (!user) return console.error('user object missing');
-
-			const stub = env.EpicDb.getByName('main');
-			await stub.updateStatistic(user.id, 'mzpl_uses', +1);
-		}),
+		return message(random(MEOW));
+	},
 } satisfies SlashCommand;

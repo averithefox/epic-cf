@@ -47,7 +47,7 @@ export default {
 		contexts: [InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel],
 	},
 
-	async execute(interaction, env) {
+	async execute(interaction, env, ctx) {
 		const now = dayjs().tz(ADVENT_TIMEZONE);
 
 		const user = interaction.user ?? interaction.member?.user;
@@ -72,10 +72,8 @@ export default {
 				"Ain't happening",
 			];
 
-			return new Promise(async (resolve) => {
-				resolve(message(random(replies)));
-				await stub.updateStatistic(user.id, 'advent_on_cooldown', +1);
-			});
+			ctx.waitUntil(stub.updateStatistic(user.id, 'advent_on_cooldown', +1));
+			return message(random(replies));
 		}
 
 		const claimedIn = getTimePastMidnight(now);

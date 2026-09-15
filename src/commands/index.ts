@@ -1,5 +1,6 @@
 import {
 	APIChatInputApplicationCommandInteraction,
+	APIInteraction,
 	APIInteractionResponse,
 	APIMessageComponentInteraction,
 	APIModalSubmitInteraction,
@@ -19,14 +20,14 @@ export type GuildSlashCommand = { scope: `guild:${number}` } & Omit<
 >;
 
 export type SlashCommandData = GlobalSlashCommand | GuildSlashCommand;
-
 export type SlashCommandResponse = APIInteractionResponse | FormData;
 
+type Handler<I extends APIInteraction, R> = (interaction: I, env: Env, ctx: ExecutionContext) => MaybePromise<R>;
 export interface SlashCommand {
 	data: SlashCommandData;
-	execute(interaction: APIChatInputApplicationCommandInteraction, env: Env): MaybePromise<SlashCommandResponse>;
-	handleComponent?: (interaction: APIMessageComponentInteraction, env: Env) => MaybePromise<SlashCommandResponse | undefined>;
-	handleModal?: (interaction: APIModalSubmitInteraction, env: Env) => MaybePromise<SlashCommandResponse | undefined>;
+	execute: Handler<APIChatInputApplicationCommandInteraction, SlashCommandResponse>;
+	handleComponent?: Handler<APIMessageComponentInteraction, SlashCommandResponse | undefined>;
+	handleModal?: Handler<APIModalSubmitInteraction, SlashCommandResponse | undefined>;
 }
 
 export const slashCommands: SlashCommand[] = [advent, mzpl, cat, leaderboard, admin];
