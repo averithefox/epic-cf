@@ -31,6 +31,8 @@ async function handleInteraction(interaction: APIInteraction, env: Env): Promise
 					.find((c) => c.data.name === interaction.data.name)
 					?.execute(interaction as APIChatInputApplicationCommandInteraction, env);
 			} catch (e) {
+				if (e instanceof Error) console.error(`(${e.name}) ${e.message} at ${e.stack}`);
+				else console.error(e);
 				return message({ content: 'exception caught during execution', flags: MessageFlags.Ephemeral });
 			}
 			return res;
@@ -41,6 +43,8 @@ async function handleInteraction(interaction: APIInteraction, env: Env): Promise
 			try {
 				res = await slashCommands.find((c) => c.data.name === id)?.handleComponent?.(interaction, env);
 			} catch (e) {
+				if (e instanceof Error) console.error(`(${e.name}) ${e.message} at ${e.stack}`);
+				else console.error(e);
 				return message({ content: 'exception caught during execution', flags: MessageFlags.Ephemeral });
 			}
 			return res;
