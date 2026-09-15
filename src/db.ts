@@ -118,7 +118,14 @@ create table if not exists bread_game (
 					/*sql*/
 					`insert into advent(user_id, day, year, claimed_at)
 					values(?, ?, ?, ?)
-					on conflict do update set claimed_at = excluded.claimed_at;`,
+					on conflict do update set
+						claimed_at = case
+							when advent.claimed_at is null then excluded.claimed_at
+							when excluded.claimed_at is null then advent.claimed_at
+							else min(advent.claimed_at, excluded.claimed_at)
+						end
+					where advent.claimed_at is null
+						or (excluded.claimed_at is not null and excluded.claimed_at < advent.claimed_at);`,
 					user_id,
 					day,
 					year,
@@ -131,8 +138,10 @@ create table if not exists bread_game (
 					`insert into stats(user_id, advent_on_cooldown, mzpl_uses)
 					values(?, ?, ?)
 					on conflict do update set
-						advent_on_cooldown = excluded.advent_on_cooldown,
-						mzpl_uses = excluded.mzpl_uses;`,
+						advent_on_cooldown = max(stats.advent_on_cooldown, excluded.advent_on_cooldown),
+						mzpl_uses = max(stats.mzpl_uses, excluded.mzpl_uses)
+					where excluded.advent_on_cooldown > stats.advent_on_cooldown
+						or excluded.mzpl_uses > stats.mzpl_uses;`,
 					user_id,
 					advent_on_cooldown,
 					mzpl_uses,
@@ -157,7 +166,7 @@ create table if not exists bread_game (
 	          raw_steak = excluded.raw_steak,
 	          cheese = excluded.cheese,
 	          cooked_steak = excluded.cooked_steak,
-	          knife = excluded.knife`,
+	          knife = excluded.knife;`,
 					row.user_id,
 					row.burgers,
 					row.bread,
