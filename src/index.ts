@@ -13,7 +13,7 @@ import { message } from './commands/utils';
 async function handleInteraction(interaction: APIInteraction, env: Env, ctx: ExecutionContext): Promise<SlashCommandResponse | undefined> {
 	const user = interaction.user ?? interaction.member?.user;
 	if (user) {
-		await env.EpicKV.put(`APIUser@${user.id}`, JSON.stringify(user), { expirationTtl: 60 * 60 * 24 });
+		ctx.waitUntil(env.EpicKV.put(`APIUser@${user.id}`, JSON.stringify(user), { expirationTtl: 60 * 60 * 24 }));
 	}
 
 	let res: SlashCommandResponse | undefined = undefined;
@@ -78,9 +78,7 @@ export default {
 		const res = await handleInteraction(interaction, env, ctx);
 		if (!res) return new Response('', { status: 404 });
 
-		return res instanceof FormData
-			? new Response(res)
-			: new Response(JSON.stringify(res), { headers: { 'content-type': 'application/json;charset=UTF-8' } });
+		return res instanceof FormData ? new Response(res) : Response.json(res);
 	},
 } satisfies ExportedHandler<Env>;
 
