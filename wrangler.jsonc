@@ -41,6 +41,15 @@
 	"placement": {
 		"mode": "smart",
 	},
+	"routes": [
+		{
+			"pattern": "epic.averi.me",
+			"zone_name": "averi.me",
+			"custom_domain": true,
+			"enabled": true,
+			"previews_enabled": false,
+		},
+	],
 	/**
 	 * Bindings
 	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
