@@ -10,12 +10,12 @@
 		"type-check": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@types/node": "^26.5.0",
+		"@types/node": "^26.6.1",
 		"arkregex": "^0.0.8",
 		"discord-api-types": "^0.38.55",
 		"prettier-plugin-organize-imports": "^4.3.0",
-		"typescript": "^5.5.2",
-		"wrangler": "^4.129.1"
+		"typescript": "^5.9.3",
+		"wrangler": "^4.132.0"
 	},
 	"dependencies": {
 		"dayjs": "^1.11.23",
