@@ -88,3 +88,24 @@ export const split = <S extends string, D extends string>(str: S, delim: D) => s
 export function panic(msg?: string): never {
 	throw new Error(msg);
 }
+
+export function log(template: TemplateStringsArray, ...args: unknown[]) {
+	const str = args.reduce((acc, it, i) => {
+		let prefix = template[i];
+
+		const value = run(() => {
+			if (it == null) return 'null';
+			if (typeof it === 'object' && 'username' in it && 'id' in it) return `${it.username} (${it.id})`;
+			if (typeof it === 'string') return it;
+			if (typeof it === 'number' && prefix.endsWith('@@')) {
+				prefix = prefix.slice(0, -2);
+				return formatDuration(performance.now() - it);
+			}
+			return JSON.stringify(it);
+		});
+
+		return acc + prefix + value;
+	}, '');
+
+	console.log(str + template.at(-1)!);
+}

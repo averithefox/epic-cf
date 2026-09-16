@@ -9,8 +9,11 @@ import {
 import { verifyKey } from 'discord-interactions';
 import { SlashCommandResponse, slashCommands } from './commands';
 import { message } from './commands/utils';
+import { log } from './utils';
 
 async function handleInteraction(interaction: APIInteraction, env: Env, ctx: ExecutionContext): Promise<SlashCommandResponse | undefined> {
+	const start = performance.now();
+
 	const user = interaction.user ?? interaction.member?.user;
 	if (user) {
 		ctx.waitUntil(env.EpicKV.put(`APIUser@${user.id}`, JSON.stringify(user), { expirationTtl: 60 * 60 * 24 }));
@@ -33,8 +36,9 @@ async function handleInteraction(interaction: APIInteraction, env: Env, ctx: Exe
 			} catch (e) {
 				if (e instanceof Error) console.error(`(${e.name}) ${e.message} at ${e.stack}`);
 				else console.error(e);
-				return message({ content: 'exception caught during execution', flags: MessageFlags.Ephemeral });
+				res = message({ content: 'exception caught during execution', flags: MessageFlags.Ephemeral });
 			}
+			log`${user}: /${interaction.data.name} [@@${start}]`;
 			return res;
 		}
 
@@ -45,8 +49,9 @@ async function handleInteraction(interaction: APIInteraction, env: Env, ctx: Exe
 			} catch (e) {
 				if (e instanceof Error) console.error(`(${e.name}) ${e.message} at ${e.stack}`);
 				else console.error(e);
-				return message({ content: 'exception caught during execution', flags: MessageFlags.Ephemeral });
+				res = message({ content: 'exception caught during execution', flags: MessageFlags.Ephemeral });
 			}
+			log`${user}: ${interaction.data.custom_id} (${interaction.message.id}) [@@${start}]`;
 			return res;
 		}
 
