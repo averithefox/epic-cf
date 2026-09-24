@@ -25,7 +25,7 @@ export function getAdventYear(date: dayjs.Dayjs) {
 export function getAdventDay(date: dayjs.Dayjs) {
 	const year = getAdventYear(date);
 	const start = dayjs.tz(`${year}-12-01`, ADVENT_TIMEZONE).startOf('day');
-	return date.diff(start, 'day');
+	return date.startOf('day').diff(start, 'day');
 }
 
 const getTimeUntilMidnight = (date: dayjs.Dayjs) => date.endOf('day').diff(date, 'ms');
