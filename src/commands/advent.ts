@@ -3,7 +3,7 @@ import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
 import { ApplicationIntegrationType, ComponentType, InteractionContextType, MessageFlags } from 'discord-api-types/v10';
 import { SlashCommand } from '.';
-import { avatarURL, formatDuration, formatOrdinal, panic, random } from '../utils';
+import { avatarURL, formatDuration, formatOrdinal, log, panic, random } from '../utils';
 import { message } from './utils';
 
 dayjs.extend(utc);
@@ -53,11 +53,13 @@ export default {
 		const user = interaction.user ?? interaction.member?.user;
 		if (!user) panic('user object missing');
 
-		const day = getAdventDay(now);
 		const year = getAdventYear(now);
+		const day = getAdventDay(now);
 
 		const stub = env.EpicDb.getByName('main');
 		const succeeded = await stub.tryClaimAdvent(user.id, day, year, now.valueOf());
+
+		log`date=${now}; adventYear=${year}; adventDay=${day}; success=${succeeded}`;
 
 		if (!succeeded) {
 			const timeUntilReset = getTimeUntilMidnight(now);

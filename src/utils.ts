@@ -95,11 +95,18 @@ export function log(template: TemplateStringsArray, ...args: unknown[]) {
 
 		const value = run(() => {
 			if (it == null) return 'null';
-			if (typeof it === 'object' && 'username' in it && 'id' in it) return `${it.username} (${it.id})`;
+			if (typeof it === 'object') {
+				if ('username' in it && 'id' in it) return `${it.username} (${it.id})`;
+				if ('toISOString' in it && typeof it.toISOString === 'function') return it.toISOString();
+				return JSON.stringify(it);
+			}
 			if (typeof it === 'string') return it;
-			if (typeof it === 'number' && prefix.endsWith('@@')) {
-				prefix = prefix.slice(0, -2);
-				return formatDuration(performance.now() - it);
+			if (typeof it === 'number') {
+				if (prefix.endsWith('@@')) {
+					prefix = prefix.slice(0, -2);
+					return formatDuration(performance.now() - it);
+				}
+				return it.toLocaleString();
 			}
 			return JSON.stringify(it);
 		});
